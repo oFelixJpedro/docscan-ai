@@ -590,9 +590,32 @@ async function callGemini(b64, attempt = 0) {
     .join('');
 
   const txt = txtFiltered || txtAll;
-  const m = txt.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('Resposta inválida da IA');
-  return JSON.parse(m[0]);
+  return extractJson(txt);
+}
+
+// Extrai e parseia o primeiro objeto JSON válido do texto,
+// tolerando trailing commas e regex guloso
+function extractJson(txt) {
+  const start = txt.indexOf('{');
+  if (start === -1) throw new Error('Resposta inválida da IA');
+
+  // Conta chaves para encontrar o fechamento correto
+  let depth = 0, end = -1;
+  for (let i = start; i < txt.length; i++) {
+    if (txt[i] === '{') depth++;
+    else if (txt[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (end === -1) throw new Error('Resposta inválida da IA');
+
+  // Remove trailing commas antes de } ou ] (padrão comum em output de LLMs)
+  const raw = txt.slice(start, end + 1)
+    .replace(/,\s*([}\]])/g, '$1');
+
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    throw new Error('JSON inválido: ' + e.message);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
