@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocScan AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #08090f;
+  --bg2:     #0e1020;
+  --bg3:     #161929;
+  --border:  #1d2138;
+  --border2: #252a45;
+  --accent:  #00ffc2;
+  --accent2: #0099ff;
+  --warn:    #ffb300;
+  --error:   #ff4757;
+  --text:    #e4e8f5;
+  --text2:   #7b84aa;
+  --text3:   #3d4460;
+  --card-ok: rgba(0,255,194,0.06);
+  --card-err:rgba(255,71,87,0.06);
+  --card-wrn:rgba(255,179,0,0.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* ── SCANLINE TEXTURE ── */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 4px);pointer-events:none;z-index:1000;opacity:.4}
+
+/* ── HEADER ── */
+header{background:var(--bg2);border-bottom:1px solid var(--border);padding:18px 36px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-mark{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:grid;place-items:center;flex-shrink:0}
+.logo-mark svg{display:block}
+.logo-name{font-size:20px;font-weight:800;letter-spacing:-1px;line-height:1}
+.logo-tag{font-family:'Fira Code',monospace;font-size:10px;color:var(--text3);letter-spacing:2px;margin-top:2px;text-transform:uppercase}
+.api-row{display:flex;align-items:center;gap:10px}
+.api-label{font-family:'Fira Code',monospace;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;white-space:nowrap}
+.api-input{background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Fira Code',monospace;font-size:12px;padding:9px 14px;border-radius:8px;width:300px;outline:none;transition:border-color .2s,box-shadow .2s}
+.api-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,255,194,.08)}
+.api-input::placeholder{color:var(--text3)}
+
+/* ── MAIN ── */
+main{max-width:1100px;margin:0 auto;padding:40px 24px 100px}
+
+/* ── DROP ZONE ── */
+.drop-wrap{position:relative;border-radius:16px;overflow:hidden}
+.drop-zone{border:2px dashed var(--border2);border-radius:16px;padding:72px 40px;text-align:center;cursor:pointer;transition:all .25s;background:var(--bg2);position:relative}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:rgba(0,255,194,.03);box-shadow:0 0 60px rgba(0,255,194,.06) inset}
+.drop-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{font-size:44px;margin-bottom:18px;opacity:.7;display:block}
+.drop-h{font-size:22px;font-weight:700;margin-bottom:8px;letter-spacing:-.5px}
+.drop-s{font-size:14px;color:var(--text2);font-weight:400}
+.drop-formats{display:inline-block;margin-top:14px;padding:5px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:100px;font-family:'Fira Code',monospace;font-size:11px;color:var(--text3);letter-spacing:.5px}
+
+/* ── FILE CHIPS ── */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.chip{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:6px 12px;font-size:13px;color:var(--text2);max-width:200px}
+.chip-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.chip-rm{color:var(--text3);font-size:18px;line-height:1;cursor:pointer;flex-shrink:0;transition:color .15s}
+.chip-rm:hover{color:var(--error)}
+.chip-add{border-style:dashed;cursor:pointer;color:var(--text3)}
+.chip-add:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── PROCESS BUTTON ── */
+.btn-wrap{margin-top:28px;position:relative}
+.btn-process{width:100%;padding:18px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#000;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;border:none;border-radius:12px;cursor:pointer;letter-spacing:.5px;transition:opacity .2s,transform .15s,box-shadow .2s;position:relative;overflow:hidden}
+.btn-process::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.25) 50%,transparent 100%);transform:translateX(-100%);transition:transform .5s}
+.btn-process:hover::after{transform:translateX(100%)}
+.btn-process:hover{opacity:.92;transform:translateY(-1px);box-shadow:0 12px 40px rgba(0,255,194,.25)}
+.btn-process:active{transform:translateY(0)}
+.btn-process:disabled{opacity:.2;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-process:disabled::after{display:none}
+.btn-eta{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-family:'Fira Code',monospace;font-size:11px;color:rgba(0,0,0,.6);pointer-events:none}
+
+/* ── PROGRESS ── */
+.progress-box{margin-top:28px;display:none}
+.progress-box.on{display:block}
+.prog-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.prog-label{font-family:'Fira Code',monospace;font-size:12px;color:var(--text2)}
+.prog-pct{font-family:'Fira Code',monospace;font-size:13px;font-weight:500;color:var(--accent)}
+.prog-track{height:5px;background:var(--bg3);border-radius:100px;overflow:hidden;position:relative}
+.prog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:100px;transition:width .35s cubic-bezier(.25,.46,.45,.94)}
+.prog-glow{position:absolute;right:0;top:-2px;height:9px;width:30px;background:radial-gradient(ellipse at right,var(--accent),transparent);opacity:0;transition:opacity .3s}
+.prog-fill:not([style*="width: 0"])~.prog-glow,.prog-fill:not([style="width: 0%"])~.prog-glow{opacity:.7}
+.prog-steps{display:flex;gap:6px;margin-top:10px}
+.step-dot{width:6px;height:6px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);flex-shrink:0;transition:all .3s}
+.step-dot.active{background:var(--accent);border-color:var(--accent);box-shadow:0 0 8px var(--accent)}
+.step-dot.done{background:rgba(0,255,194,.3);border-color:rgba(0,255,194,.3)}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border);margin:44px 0;display:none}
+
+/* ── RESULTS ── */
+.results-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.results-ttl{font-family:'Fira Code',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--text3)}
+.results-stat{font-family:'Fira Code',monospace;font-size:12px;color:var(--text3)}
+.ok-num{color:var(--accent)}
+.err-num{color:var(--error)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+
+/* ── RESULT CARD ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:13px;overflow:hidden;transition:border-color .2s,transform .2s,box-shadow .2s}
+.card:hover{transform:translateY(-3px);box-shadow:0 12px 36px rgba(0,0,0,.4)}
+.card.ok{border-color:rgba(0,255,194,.18);background:var(--card-ok)}
+.card.ok:hover{border-color:rgba(0,255,194,.35);box-shadow:0 12px 36px rgba(0,255,194,.08)}
+.card.err{border-color:rgba(255,71,87,.18);background:var(--card-err)}
+.card.wrn{border-color:rgba(255,179,0,.18);background:var(--card-wrn)}
+.card-img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;background:var(--bg3)}
+.card-ph{width:100%;aspect-ratio:16/10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg3);gap:8px}
+.card-ph-icon{font-size:28px;opacity:.5}
+.card-ph-txt{font-family:'Fira Code',monospace;font-size:10px;color:var(--text3);letter-spacing:1px}
+.card-body{padding:14px}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:100px;font-family:'Fira Code',monospace;font-size:10px;font-weight:500;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px}
+.badge-ok{background:rgba(0,255,194,.12);color:var(--accent)}
+.badge-err{background:rgba(255,71,87,.12);color:var(--error)}
+.badge-wrn{background:rgba(255,179,0,.12);color:var(--warn)}
+.card-type{font-size:14px;font-weight:700;letter-spacing:-.3px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-sub{font-size:11px;color:var(--text3);margin-bottom:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn-dl{width:100%;padding:8px;background:transparent;border:1px solid rgba(0,255,194,.3);color:var(--accent);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;border-radius:7px;cursor:pointer;transition:all .2s;letter-spacing:.3px}
+.btn-dl:hover{background:var(--accent);color:#000;border-color:var(--accent)}
+
+/* ── SKELETON ── */
+@keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
+.skel{background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);background-size:600px 100%;animation:shimmer 1.6s infinite;border-radius:5px}
+
+/* ── ZIP BUTTON ── */
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:28px;right:28px;padding:13px 20px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;font-size:13px;font-family:'Fira Code',monospace;z-index:999;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{border-color:var(--accent);color:var(--accent)}
+.toast.bad{border-color:var(--error);color:var(--error)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  header{padding:14px 16px;flex-direction:column;gap:14px;align-items:flex-start}
+  .api-row{width:100%}
+  .api-input{width:100%;flex:1}
+  main{padding:24px 14px 80px}
+  .drop-zone{padding:48px 24px}
+  .grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:400px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round">
+        <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+        <path d="M9 3v18M3 9h18"/>
+        <circle cx="6.5" cy="6.5" r="1" fill="#000" stroke="none"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-name">DocScan <span style="color:var(--accent)">AI</span></div>
+      <div class="logo-tag">gemma 4 · processamento</div>
+    </div>
+  </div>
+  <div class="api-row">
+    <span class="api-label">API Key</span>
+    <input class="api-input" id="apiIn" type="password" placeholder="Cole sua chave do Google AI Studio..." autocomplete="off">
+  </div>
+</header>
+
+<main>
+  <!-- DROP ZONE -->
+  <div class="drop-zone" id="dz">
+    <input type="file" id="fi" class="drop-input" accept="image/*" multiple>
+    <span class="drop-icon">📁</span>
+    <div class="drop-h">Arraste os documentos aqui</div>
+    <div class="drop-s">ou clique para selecionar</div>
+    <span class="drop-formats">JPG · PNG · WEBP · HEIC</span>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <!-- PROCESS -->
+  <div class="btn-wrap">
+    <button class="btn-process" id="btnP" onclick="run()" disabled>
+      ▶ &nbsp;Iniciar Processamento
+    </button>
+    <span class="btn-eta" id="eta"></span>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-box" id="progBox">
+    <div class="prog-top">
+      <span class="prog-label" id="progLbl">—</span>
+      <span class="prog-pct" id="progPct">0%</span>
+    </div>
+    <div class="prog-track">
+      <div class="prog-fill" id="progFill"></div>
+      <div class="prog-glow"></div>
+    </div>
+    <div class="prog-steps" id="progSteps"></div>
+  </div>
+
+  <div class="divider" id="div"></div>
+
+  <!-- RESULTS -->
+  <div id="results" style="display:none">
+    <div class="results-hdr">
+      <span class="results-ttl">// resultados</span>
+      <span class="results-stat" id="stat"></span>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let files  = [];
+let results = [];
+let busy   = false;
+let _progTimer = null;
+let _progCur   = 0;
+
+// ═══════════════════════════════════════════════════════════
+// API KEY — persiste no localStorage
+// ═══════════════════════════════════════════════════════════
+const apiIn = document.getElementById('apiIn');
+apiIn.value = localStorage.getItem('dcs_key') || '';
+apiIn.addEventListener('input', () => localStorage.setItem('dcs_key', apiIn.value.trim()));
+const key = () => apiIn.value.trim();
+
+// ═══════════════════════════════════════════════════════════
+// DRAG & DROP / FILE INPUT
+// ═══════════════════════════════════════════════════════════
+const dz = document.getElementById('dz');
+const fi = document.getElementById('fi');
+
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', ()  => dz.classList.remove('over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); addFiles(e.dataTransfer.files); });
+dz.addEventListener('click', () => fi.click());
+fi.addEventListener('change', () => { addFiles(fi.files); fi.value = ''; });
+
+function addFiles(list) {
+  const imgs = Array.from(list).filter(f => f.type.startsWith('image/'));
+  files = [...files, ...imgs];
+  renderChips();
+  syncBtn();
+}
+
+function removeFile(i) { files.splice(i, 1); renderChips(); syncBtn(); }
+
+function renderChips() {
+  const c = document.getElementById('chips');
+  c.innerHTML = files.map((f, i) => `
+    <div class="chip" title="${f.name}">
+      <span style="font-size:14px">🖼</span>
+      <span class="chip-name">${f.name}</span>
+      <span class="chip-rm" onclick="removeFile(${i})">×</span>
+    </div>
+  `).join('') + (files.length ? `
+    <div class="chip chip-add" onclick="document.getElementById('fi').click()">
+      + adicionar
+    </div>
+    <div class="chip" onclick="clearAll()"
+      style="border-color:rgba(255,71,87,.35);color:var(--error);cursor:pointer;border-style:dashed"
+      onmouseover="this.style.background='rgba(255,71,87,.08)'"
+      onmouseout="this.style.background=''">
+      ✕ limpar
+    </div>` : '');
+  document.getElementById('eta').textContent =
+    files.length > 1 ? `~${Math.ceil(files.length * 5 / 60)} min` : '';
+}
+
+function clearAll() {
+  files = []; results = []; busy = false;
+  renderChips(); syncBtn();
+  document.getElementById('progBox').classList.remove('on');
+  document.getElementById('progFill').style.width = '0%';
+  document.getElementById('progPct').textContent  = '0%';
+  document.getElementById('progLbl').textContent  = '—';
+  document.getElementById('progSteps').innerHTML  = '';
+  document.getElementById('grid').innerHTML       = '';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('div').style.display    = 'none';
+  document.getElementById('stat').textContent     = '';
+  document.getElementById('eta').textContent      = '';
+}
+
+function syncBtn() {
+  document.getElementById('btnP').disabled = files.length === 0 || busy;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROGRESS
+// ═══════════════════════════════════════════════════════════
+function progSet(pct, lbl, dur = 400) {
+  if (_progTimer) clearInterval(_progTimer);
+  document.getElementById('progLbl').textContent = lbl || document.getElementById('progLbl').textContent;
+  const from = _progCur, to = pct, t0 = Date.now();
+  _progTimer = setInterval(() => {
+    const p = Math.min((Date.now() - t0) / dur, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    _progCur = from + (to - from) * e;
+    _progUI(_progCur);
+    if (p >= 1) clearInterval(_progTimer);
+  }, 16);
+}
+
+function progCreep(from, to, dur) {
+  if (_progTimer) clearInterval(_progTimer);
+  _progCur = from;
+  const t0 = Date.now();
+  _progTimer = setInterval(() => {
+    const t = Math.min((Date.now() - t0) / dur, 1);
+    _progCur = from + (to - from) * Math.pow(t, 0.5) * 0.88;
+    _progUI(_progCur);
+  }, 120);
+}
+
+function _progUI(v) {
+  document.getElementById('progFill').style.width = v + '%';
+  document.getElementById('progPct').textContent  = Math.round(v) + '%';
+}
+
+function buildSteps(n) {
+  const s = document.getElementById('progSteps');
+  s.innerHTML = Array.from({length: n}, (_,i) =>
+    `<div class="step-dot" id="step${i}"></div>`).join('');
+}
+
+function stepDone(i) {
+  const el = document.getElementById('step' + i);
+  if (!el) return;
+  el.classList.remove('active');
+  el.classList.add('done');
+}
+
+function stepActive(i) {
+  const el = document.getElementById('step' + i);
+  if (el) el.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════
+// IMAGE UTILITIES
+// ═══════════════════════════════════════════════════════════
+function fileToCanvas(file, maxPx) {
+  return new Promise(res => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (maxPx && Math.max(w, h) > maxPx) {
+        const s = maxPx / Math.max(w, h);
+        w = Math.round(w * s); h = Math.round(h * s);
+      }
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      res(cv);
+    };
+    img.src = url;
+  });
+}
+
+const toB64 = (cv, q = .85) => cv.toDataURL('image/jpeg', q).split(',')[1];
+
+// ═══════════════════════════════════════════════════════════
+// PERSPECTIVE WARP (homografia 4-ponto)
+// ═══════════════════════════════════════════════════════════
+function solveH(A, b) {
+  const n = 8, M = A.map((r,i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let mx = c;
+    for (let r = c+1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[mx][c])) mx = r;
+    [M[c], M[mx]] = [M[mx], M[c]];
+    const p = M[c][c]; if (Math.abs(p) < 1e-10) continue;
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const f = M[r][c] / p;
+      for (let j = c; j <= n; j++) M[r][j] -= f * M[c][j];
+    }
+  }
+  return M.map((r,i) => r[n] / r[i]);
+}
+
+function homography(src4, dst4) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const [sx,sy] = src4[i], [dx,dy] = dst4[i];
+    A.push([sx,sy,1,0,0,0,-dx*sx,-dx*sy]); b.push(dx);
+    A.push([0,0,0,sx,sy,1,-dy*sx,-dy*sy]); b.push(dy);
+  }
+  const h = solveH(A, b); return [...h, 1];
+}
+
+function warp(srcCv, corners) {
+  const [tl,tr,br,bl] = corners;
+  const W = Math.round(Math.max(Math.hypot(tr[0]-tl[0],tr[1]-tl[1]), Math.hypot(br[0]-bl[0],br[1]-bl[1])));
+  const H = Math.round(Math.max(Math.hypot(bl[0]-tl[0],bl[1]-tl[1]), Math.hypot(br[0]-tr[0],br[1]-tr[1])));
+  const inv = homography([[0,0],[W,0],[W,H],[0,H]], corners);
+  const sW = srcCv.width, sH = srcCv.height;
+  const sd = srcCv.getContext('2d').getImageData(0,0,sW,sH).data;
+  const out = document.createElement('canvas'); out.width = W; out.height = H;
+  const ctx = out.getContext('2d');
+  const id  = ctx.createImageData(W, H); const d = id.data;
+  const [h0,h1,h2,h3,h4,h5,h6,h7,h8] = inv;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const ww = h6*x + h7*y + h8;
+      const sx = (h0*x + h1*y + h2) / ww;
+      const sy = (h3*x + h4*y + h5) / ww;
+      const x0 = sx|0, y0 = sy|0;
+      if (x0 < 0 || y0 < 0 || x0 >= sW-1 || y0 >= sH-1) continue;
+      const fx = sx-x0, fy = sy-y0;
+      const i00=(y0*sW+x0)*4, i10=i00+4, i01=((y0+1)*sW+x0)*4, i11=i01+4;
+      const idx=(y*W+x)*4, a=(1-fx)*(1-fy), b2=fx*(1-fy), c2=(1-fx)*fy, dd=fx*fy;
+      for (let k=0;k<3;k++) d[idx+k]=sd[i00+k]*a+sd[i10+k]*b2+sd[i01+k]*c2+sd[i11+k]*dd;
+      d[idx+3]=255;
+    }
+  }
+  ctx.putImageData(id,0,0); return out;
+}
+
+function trimBorder(cv, pct = 0.014) {
+  const pw = Math.round(cv.width  * pct);
+  const ph = Math.round(cv.height * pct);
+  if (pw < 2 && ph < 2) return cv;
+  const out = document.createElement('canvas');
+  out.width  = cv.width  - pw * 2;
+  out.height = cv.height - ph * 2;
+  out.getContext('2d').drawImage(cv, -pw, -ph);
+  return out;
+}
+
+function rotate(cv, deg) {
+  if (!deg) return cv;
+  const out = document.createElement('canvas');
+  if (deg===90||deg===270) { out.width=cv.height; out.height=cv.width; }
+  else                      { out.width=cv.width;  out.height=cv.height; }
+  const ctx = out.getContext('2d');
+  ctx.translate(out.width/2, out.height/2);
+  ctx.rotate(deg * Math.PI/180);
+  ctx.drawImage(cv, -cv.width/2, -cv.height/2);
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PDF GENERATION
+// ═══════════════════════════════════════════════════════════
+function canvasToPdf(canvas) {
+  const { jsPDF } = window.jspdf;
+  const W = canvas.width, H = canvas.height;
+  // jsPDF usa mm internamente; convertemos px→mm (96dpi padrão)
+  const mmW = W * 25.4 / 96;
+  const mmH = H * 25.4 / 96;
+  const doc = new jsPDF({
+    orientation: W >= H ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: [mmW, mmH]
+  });
+  doc.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, mmW, mmH);
+  return doc.output('datauristring');           // "data:application/pdf;base64,..."
+}
+
+function pdfBlobFromCanvas(canvas) {
+  const { jsPDF } = window.jspdf;
+  const W = canvas.width, H = canvas.height;
+  const mmW = W * 25.4 / 96, mmH = H * 25.4 / 96;
+  const doc = new jsPDF({
+    orientation: W >= H ? 'landscape' : 'portrait',
+    unit: 'mm', format: [mmW, mmH]
+  });
+  doc.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, mmW, mmH);
+  return doc.output('arraybuffer');             // para o JSZip
+}
+
+// ═══════════════════════════════════════════════════════════
+// GEMINI API
+// ═══════════════════════════════════════════════════════════
+const PROMPT = `Analise esta imagem e encontre o documento nela (RG, CNH, passaporte, CPF, comprovante, etc).
+
+Retorne APENAS JSON puro, sem markdown:
+{
+  "found": true,
+  "legible": true,
+  "illegible_reason": null,
+  "document_type": "Carteira de Identidade",
+  "corners": [
+    {"x":0.12,"y":0.18},
+    {"x":0.87,"y":0.18},
+    {"x":0.87,"y":0.82},
+    {"x":0.12,"y":0.82}
+  ],
+  "rotation_needed": 0
+}
+
+Campos:
+• found — se existe documento na imagem
+• legible — texto nítido e legível, sem desfoque severo ou reflexo que impeça leitura
+• illegible_reason — se ilegível: motivo curto (ex: "Desfoque severo", "Reflexo intenso", "Muito inclinado", "Imagem escura")
+• document_type — tipo do documento
+• corners — 4 cantos do documento em fração (0-1) da imagem: [superior-esquerdo, superior-direito, inferior-direito, inferior-esquerdo]. Seja PRECISO, abraçando as bordas reais do documento.
+• rotation_needed — graus horários para deixar o texto na posição normal (0, 90, 180 ou 270)`;
+
+async function callGemini(b64, attempt = 0) {
+  let r;
+  try {
+    r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:streamGenerateContent?key=${key()}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [
+              { text: PROMPT },
+              { inline_data: { mime_type: 'image/jpeg', data: b64 } }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.05,
+            maxOutputTokens: 8000,
+            thinkingConfig: { thinkingLevel: 'HIGH' }
+          }
+        })
+      }
+    );
+  } catch (networkErr) {
+    // TypeError: failed to fetch — timeout ou queda de rede
+    if (attempt < 4) {
+      const delay = [12000, 20000, 35000, 60000][attempt];
+      document.getElementById('progLbl').textContent =
+        `⚠️ Erro de rede — aguardando ${delay/1000}s (tentativa ${attempt+2}/5)…`;
+      await wait(delay);
+      return callGemini(b64, attempt + 1);
+    }
+    throw new Error('Falha de rede após 5 tentativas — verifique sua conexão');
+  }
+
+  // Retry automático para 429 (rate limit), 500 (erro interno) e 503 (sobrecarga)
+  if ((r.status === 429 || r.status === 500 || r.status === 503) && attempt < 4) {
+    const delay = r.status === 429
+      ? [8000, 16000, 30000, 60000][attempt]
+      : [5000, 10000, 20000, 40000][attempt];
+    const label = r.status === 429 ? '⏳ Limite de requisições' : '⚠️ Erro interno do servidor';
+    document.getElementById('progLbl').textContent =
+      `${label} — aguardando ${delay/1000}s (tentativa ${attempt+2}/5)…`;
+    await wait(delay);
+    return callGemini(b64, attempt + 1);
+  }
+
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${r.status}`); }
+
+  // streamGenerateContent devolve um array JSON com N chunks (ou objeto único em cold start)
+  const raw = await r.json();
+
+  // Normaliza: garante que sempre trabalhamos com array
+  const chunks = Array.isArray(raw) ? raw : [raw];
+
+  // Detecta corte por MAX_TOKENS no último chunk
+  const finishReason = chunks.at(-1)?.candidates?.[0]?.finishReason;
+  if (finishReason === 'MAX_TOKENS') {
+    // Com 8000 tokens não deve ocorrer, mas se ocorrer retenta uma vez
+    if (attempt < 2) {
+      await wait(5000);
+      return callGemini(b64, attempt + 1);
+    }
+    throw new Error('Resposta cortada (MAX_TOKENS) — tente novamente');
+  }
+
+  // Extrai todas as parts de texto de todos os chunks
+  const allParts = chunks.flatMap(c => c.candidates?.[0]?.content?.parts || []);
+
+  // Tentativa 1: ignora parts de thinking (thought:true)
+  const txtFiltered = allParts
+    .filter(p => !p.thought && typeof p.text === 'string')
+    .map(p => p.text)
+    .join('');
+
+  // Tentativa 2 (fallback): pega todo texto sem filtro, caso o modelo não marque thought
+  const txtAll = allParts
+    .filter(p => typeof p.text === 'string')
+    .map(p => p.text)
+    .join('');
+
+  const txt = txtFiltered || txtAll;
+  const m = txt.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('Resposta inválida da IA');
+  return JSON.parse(m[0]);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROCESS LOOP
+// ═══════════════════════════════════════════════════════════
+async function run() {
+  if (!key()) { toast('Configure a API Key do Google AI Studio', 'bad'); apiIn.focus(); return; }
+  if (!files.length || busy) return;
+
+  busy = true; results = [];
+  document.getElementById('btnP').disabled = true;
+  document.getElementById('progBox').classList.add('on');
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('div').style.display  = 'block';
+  document.getElementById('grid').innerHTML = '';
+  document.getElementById('stat').textContent = '';
+  buildSteps(files.length);
+
+  const total = files.length, share = 88 / total;
+  progSet(4, 'Preparando arquivos…'); await wait(500);
+
+  for (let i = 0; i < total; i++) {
+    const f = files[i];
+    const base = 6 + i * share;
+    const id = 'c' + i;
+
+    stepActive(i);
+    addSkel(id, f.name);
+    progSet(base + share*.08, `[${i+1}/${total}] Enviando: ${f.name}`);
+    await wait(150);
+
+    try {
+      const aCv  = await fileToCanvas(f, 1024);
+      const b64  = toB64(aCv, .85);
+
+      progCreep(base+share*.12, base+share*.65, 30000);
+      document.getElementById('progLbl').textContent = `[${i+1}/${total}] Analisando com IA…`;
+
+      const ai = await callGemini(b64);
+
+      progSet(base+share*.72, `[${i+1}/${total}] Aplicando correções…`, 200);
+      await wait(80);
+
+      let url = null;
+      let finalCanvas = null;
+      if (ai.found && ai.legible && ai.corners?.length === 4) {
+        const valid = ai.corners.every(c => c.x>=0&&c.x<=1&&c.y>=0&&c.y<=1);
+        if (valid) {
+          const pCv = await fileToCanvas(f, 1800);
+          const W = pCv.width, H = pCv.height;
+          const pts = ai.corners.map(c => [c.x*W, c.y*H]);
+          await wait(0);                        // yield para UI respirar
+          const warped   = warp(pCv, pts);
+          const rotated  = rotate(warped, ai.rotation_needed||0);
+          const trimmed  = trimBorder(rotated);
+          url = trimmed.toDataURL('image/jpeg', .95);
+          finalCanvas = trimmed;
+          console.log(`[DocScan] ${f.name} → rotation_needed: ${ai.rotation_needed}, corners:`, ai.corners);
+        }
+      }
+
+      const res = {f, ai, url, canvas: finalCanvas, i};
+      results.push(res);
+      fillCard(id, res);
+
+    } catch(err) {
+      results.push({f, err: err.message, i});
+      fillErr(id, f, err.message);
+    }
+
+    stepDone(i);
+    progSet(base + share, `Documento ${i+1} concluído`, 300);
+    if (i < total-1) await wait(4300); // respeita 15 RPM
+  }
+
+  await wait(200);
+  progSet(100, `✓ ${total} documento${total>1?'s':''} processado${total>1?'s':''}`);
+
+  const ok  = results.filter(r=>r.url).length;
+  const bad = results.length - ok;
+  document.getElementById('stat').innerHTML =
+    `<span class="ok-num">${ok} legível${ok!==1?'is':''}</span> &nbsp;·&nbsp; <span class="err-num">${bad} ilegível${bad!==1?'is':''}</span>`;
+
+  if (ok > 0) {
+  }
+
+  busy = false;
+  document.getElementById('btnP').disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARDS
+// ═══════════════════════════════════════════════════════════
+function addSkel(id, name) {
+  const g = document.getElementById('grid');
+  const d = document.createElement('div');
+  d.className = 'card'; d.id = id;
+  d.innerHTML = `
+    <div class="card-ph"><div class="card-ph-icon skel" style="width:40px;height:40px;border-radius:50%"></div></div>
+    <div class="card-body">
+      <div class="skel" style="height:18px;width:55%;margin-bottom:8px"></div>
+      <div class="skel" style="height:13px;width:80%;margin-bottom:12px"></div>
+      <div class="skel" style="height:32px"></div>
+    </div>`;
+  g.appendChild(d);
+}
+
+function fillCard(id, {f, ai, url, i}) {
+  const el = document.getElementById(id);
+  if (!ai) return;
+
+  // Cria URL temporária do arquivo original (para preview e download)
+  const origUrl = URL.createObjectURL(f);
+
+  if (!ai.found) {
+    el.className='card wrn';
+    el.innerHTML=`
+      <div style="position:relative">
+        <img class="card-img" src="${origUrl}" style="filter:brightness(.6) saturate(.3)">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+          <span style="font-size:26px">❓</span>
+          <span style="font-family:'Fira Code',monospace;font-size:9px;letter-spacing:1.5px;color:var(--warn)">SEM DOCUMENTO</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="badge badge-wrn">⚠ não identificado</div>
+        <div class="card-type">${f.name}</div>
+        <div class="card-sub">Nenhum documento encontrado</div>
+        <button class="btn-dl" onclick="dlOrig(${i})" style="width:100%;border-color:rgba(255,179,0,.3);color:var(--warn)">↓ Baixar original</button>
+      </div>`;
+    return;
+  }
+
+  if (!ai.legible || !url) {
+    el.className='card err';
+    el.innerHTML=`
+      <div style="position:relative">
+        <img class="card-img" src="${origUrl}" style="filter:brightness(.55) saturate(.25)">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+          <span style="font-size:26px">🚫</span>
+          <span style="font-family:'Fira Code',monospace;font-size:9px;letter-spacing:1.5px;color:var(--error)">ILEGÍVEL</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="badge badge-err">✗ ilegível</div>
+        <div class="card-type">${ai.document_type||f.name}</div>
+        <div class="card-sub">${ai.illegible_reason||'Qualidade insuficiente'}</div>
+        <button class="btn-dl" onclick="dlOrig(${i})" style="width:100%;border-color:rgba(255,71,87,.3);color:var(--error)">↓ Baixar original</button>
+      </div>`;
+    return;
+  }
+
+  el.className='card ok';
+  el.innerHTML=`
+    <img class="card-img" id="img${i}" src="${url}" alt="${ai.document_type}">
+    <div class="card-body">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="badge badge-ok" style="margin-bottom:0">✓ legível</div>
+        <div style="display:flex;gap:4px">
+          <button title="Girar 90° anti-horário" onclick="rotateCard(${i},-90)"
+            style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:14px;transition:all .15s"
+            onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+            onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">↺</button>
+          <button title="Girar 90° horário" onclick="rotateCard(${i},90)"
+            style="background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:14px;transition:all .15s"
+            onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+            onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">↻</button>
+        </div>
+      </div>
+      <div class="card-type">${ai.document_type}</div>
+      <div class="card-sub">${f.name}</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-dl" onclick="dlOne(${i},'jpg')" style="flex:1">↓ JPG</button>
+        <button class="btn-dl" onclick="dlOne(${i},'pdf')" style="flex:1;border-color:rgba(0,153,255,.4);color:var(--accent2)">↓ PDF</button>
+      </div>
+    </div>`;
+}
+
+function fillErr(id, f, msg) {
+  const el = document.getElementById(id);
+  const origUrl = URL.createObjectURL(f);
+  // índice será o atual comprimento de results (ainda não foi pushed)
+  const idx = results.length;
+  el.className='card err';
+  el.innerHTML=`
+    <div style="position:relative">
+      <img class="card-img" src="${origUrl}" style="filter:brightness(.5) saturate(.2)">
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+        <span style="font-size:26px">⚡</span>
+        <span style="font-family:'Fira Code',monospace;font-size:9px;letter-spacing:1.5px;color:var(--error)">ERRO API</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="badge badge-err">✗ erro</div>
+      <div class="card-type">${f.name}</div>
+      <div class="card-sub" style="font-family:'Fira Code',monospace;font-size:10px;margin-bottom:12px">${msg}</div>
+      <button class="btn-dl" onclick="dlOrig(${idx})" style="width:100%;border-color:rgba(255,71,87,.3);color:var(--error)">↓ Baixar original</button>
+    </div>`;
+}
+
+// Rotação manual do card (corrige orientation_needed errado da IA)
+function rotateCard(idx, deg) {
+  const r = results[idx];
+  if (!r?.canvas) return;
+  r.canvas = rotate(r.canvas, ((deg % 360) + 360) % 360);
+  r.url    = r.canvas.toDataURL('image/jpeg', .95);
+  const img = document.getElementById('img' + idx);
+  if (img) img.src = r.url;
+}
+
+// Download do arquivo original (ilegíveis / erros)
+function dlOrig(i) {
+  const r = results[i]; if (!r?.f) return;
+  const a = Object.assign(document.createElement('a'),
+    {download: r.f.name, href: URL.createObjectURL(r.f)});
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════
+// DOWNLOAD
+// ═══════════════════════════════════════════════════════════
+function dlOne(i, fmt = 'pdf') {
+  const r = results[i]; if (!r?.url) return;
+  const safe = (r.ai?.document_type||'doc').replace(/[^a-zA-ZÀ-ú0-9 ]/g,'').replace(/ /g,'_');
+  const num  = String(i+1).padStart(2,'0');
+
+  if (fmt === 'jpg') {
+    const a = Object.assign(document.createElement('a'),
+      {download:`${num}_${safe}.jpg`, href:r.url});
+    a.click();
+  } else {
+    // PDF via Blob + createObjectURL (evita bloqueio do Windows SmartScreen)
+    const buf  = pdfBlobFromCanvas(r.canvas);
+    const blob = new Blob([buf], {type:'application/pdf'});
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'),
+      {download:`${num}_${safe}.pdf`, href:url});
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
