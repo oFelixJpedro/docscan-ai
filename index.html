@@ -128,7 +128,17 @@ main{max-width:1100px;margin:0 auto;padding:40px 24px 100px}
 @keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
 .skel{background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);background-size:600px 100%;animation:shimmer 1.6s infinite;border-radius:5px}
 
-/* ── ZIP BUTTON ── */
+/* ── CHECKBOX SELEÇÃO ── */
+.card-check-wrap{position:absolute;top:8px;left:8px;z-index:10;cursor:pointer}
+.card-check-box{width:28px;height:28px;border-radius:7px;border:2px solid rgba(255,255,255,.35);background:rgba(8,9,15,.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;transition:all .18s;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--accent);user-select:none}
+.card-check-box:hover{border-color:var(--accent);background:rgba(0,255,194,.12)}
+.card-check-box.selected{background:var(--accent);border-color:var(--accent);color:#000}
+.card.ok{position:relative}
+
+/* ── BOTÃO PDF COMBINADO ── */
+.btn-combined{margin-top:20px;width:100%;padding:15px;background:linear-gradient(135deg,rgba(0,255,194,.1),rgba(0,153,255,.1));border:1px solid rgba(0,255,194,.3);color:var(--accent);font-family:'Syne',sans-serif;font-size:14px;font-weight:700;border-radius:10px;cursor:pointer;transition:all .2s;display:none;align-items:center;justify-content:center;gap:10px;letter-spacing:.3px}
+.btn-combined:hover{background:linear-gradient(135deg,rgba(0,255,194,.18),rgba(0,153,255,.18));border-color:var(--accent);box-shadow:0 0 24px rgba(0,255,194,.12)}
+.btn-combined:disabled{opacity:.4;cursor:not-allowed}
 
 /* ── TOAST ── */
 .toast{position:fixed;bottom:28px;right:28px;padding:13px 20px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;font-size:13px;font-family:'Fira Code',monospace;z-index:999;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;max-width:320px}
@@ -211,6 +221,9 @@ main{max-width:1100px;margin:0 auto;padding:40px 24px 100px}
       <span class="results-stat" id="stat"></span>
     </div>
     <div class="grid" id="grid"></div>
+    <button class="btn-combined" id="btnCombined" onclick="dlCombined()">
+      ↓ Baixar PDF combinado <span id="selCount">(0)</span>
+    </button>
   </div>
 </main>
 
@@ -223,6 +236,7 @@ main{max-width:1100px;margin:0 auto;padding:40px 24px 100px}
 // ═══════════════════════════════════════════════════════════
 let files  = [];
 let results = [];
+let selection = [];
 let busy   = false;
 let _progTimer = null;
 let _progCur   = 0;
@@ -286,6 +300,7 @@ function clearAll() {
   document.getElementById('progPct').textContent  = '0%';
   document.getElementById('progLbl').textContent  = '—';
   document.getElementById('progSteps').innerHTML  = '';
+  selection = [];
   document.getElementById('grid').innerHTML       = '';
   document.getElementById('results').style.display = 'none';
   document.getElementById('div').style.display    = 'none';
@@ -586,7 +601,8 @@ async function run() {
   if (!key()) { toast('Configure a API Key do Google AI Studio', 'bad'); apiIn.focus(); return; }
   if (!files.length || busy) return;
 
-  busy = true; results = [];
+  busy = true; results = []; selection = [];
+  document.getElementById('btnCombined').style.display = 'none';
   document.getElementById('btnP').disabled = true;
   document.getElementById('progBox').classList.add('on');
   document.getElementById('results').style.display = 'block';
@@ -670,6 +686,9 @@ async function run() {
     `<span class="ok-num">${ok} legível${ok!==1?'is':''}</span> &nbsp;·&nbsp; <span class="err-num">${bad} ilegível${bad!==1?'is':''}</span>`;
 
 
+  document.getElementById('btnCombined').style.display =
+    results.some(r => r.url) ? 'flex' : 'none';
+  renderSelBtn();
   busy = false;
   document.getElementById('btnP').disabled = false;
 }
@@ -738,7 +757,12 @@ function fillCard(id, {f, ai, url, i}) {
 
   el.className='card ok';
   el.innerHTML=`
-    <img class="card-img" id="img${i}" src="${url}" alt="${ai.document_type}">
+    <div style="position:relative">
+      <img class="card-img" id="img${i}" src="${url}" alt="${ai.document_type}">
+      <div class="card-check-wrap" onclick="toggleSelect(${i})">
+        <div class="card-check-box" id="chk${i}"></div>
+      </div>
+    </div>
     <div class="card-body">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div class="badge badge-ok" style="margin-bottom:0">✓ legível</div>
@@ -831,6 +855,100 @@ function dlOne(i, fmt = 'pdf') {
 // UTILS
 // ═══════════════════════════════════════════════════════════
 const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// ═══════════════════════════════════════════════════════════
+// SELEÇÃO COMBINADA
+// ═══════════════════════════════════════════════════════════
+function toggleSelect(i) {
+  const idx = selection.indexOf(i);
+  if (idx === -1) {
+    selection.push(i);
+  } else {
+    selection.splice(idx, 1);
+  }
+  // Atualiza visual de todos os checkboxes
+  results.forEach((r, ri) => {
+    if (!r.url) return;
+    const box = document.getElementById('chk' + ri);
+    if (!box) return;
+    const pos = selection.indexOf(ri);
+    if (pos !== -1) {
+      box.classList.add('selected');
+      box.textContent = pos + 1;
+    } else {
+      box.classList.remove('selected');
+      box.textContent = '';
+    }
+  });
+  renderSelBtn();
+}
+
+function renderSelBtn() {
+  const btn = document.getElementById('btnCombined');
+  if (!btn) return;
+  const n = selection.length;
+  document.getElementById('selCount').textContent = `(${n})`;
+  btn.disabled = n === 0;
+  btn.style.display = results.some(r => r.url) ? 'flex' : 'none';
+}
+
+async function dlCombined() {
+  if (!selection.length) return;
+  const btn = document.getElementById('btnCombined');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Gerando PDF…';
+
+  const { jsPDF } = window.jspdf;
+  let doc = null;
+
+  for (const ri of selection) {
+    const r = results[ri];
+    if (!r?.canvas) continue;
+
+    const cv = r.canvas;
+    const W = cv.width, H = cv.height;
+    const landscape = W > H;
+    const orientation = landscape ? 'landscape' : 'portrait';
+    const pageW = landscape ? 297 : 210;
+    const pageH = landscape ? 210 : 297;
+
+    if (!doc) {
+      doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
+    } else {
+      doc.addPage('a4', orientation);
+    }
+
+    const ratio = Math.min(pageW / W, pageH / H);
+    const imgW  = W * ratio;
+    const imgH  = H * ratio;
+    const x     = (pageW - imgW) / 2;
+    const y     = (pageH - imgH) / 2;
+
+    doc.addImage(cv.toDataURL('image/jpeg', .92), 'JPEG', x, y, imgW, imgH);
+  }
+
+  if (doc) {
+    const buf  = doc.output('arraybuffer');
+    const blob = new Blob([buf], { type: 'application/pdf' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), { href: url, download: 'documentos_combinados.pdf' });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  // Zera seleção automaticamente
+  selection = [];
+  results.forEach((r, ri) => {
+    if (!r.url) return;
+    const box = document.getElementById('chk' + ri);
+    if (box) { box.classList.remove('selected'); box.textContent = ''; }
+  });
+  // Restaura innerHTML ANTES de renderSelBtn (que precisa do #selCount existir)
+  btn.innerHTML = '↓ Baixar PDF combinado <span id="selCount">(0)</span>';
+  btn.disabled = true;
+  renderSelBtn();
+}
+
 
 function toast(msg, type='ok') {
   const t = document.getElementById('toast');
