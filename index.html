@@ -615,7 +615,16 @@ async function run() {
       progCreep(base+share*.12, base+share*.65, 30000);
       document.getElementById('progLbl').textContent = `[${i+1}/${total}] Analisando com IA…`;
 
-      const ai = await callGemini(b64);
+      let ai = await callGemini(b64);
+
+      // Se o modelo retornou found:false, tenta uma vez mais antes de aceitar
+      if (!ai.found) {
+        document.getElementById('progLbl').textContent =
+          `[${i+1}/${total}] Não identificado — confirmando com IA…`;
+        await wait(4000);
+        const ai2 = await callGemini(b64);
+        if (ai2.found) ai = ai2;
+      }
 
       progSet(base+share*.72, `[${i+1}/${total}] Aplicando correções…`, 200);
       await wait(80);
