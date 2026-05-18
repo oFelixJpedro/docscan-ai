@@ -55,3 +55,5 @@ Exportação em JPG ou PDF
 
 **João Pedro Félix Barbosa**
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://linkedin.com/in/ofelix-jpedro)
+
+> ⚠️ **Sobre a autoria:** esse projeto foi desenvolvido com auxílio significativo de IA generativa. Eu estruturei o problema, defini a arquitetura, iterei sobre as soluções e validei o funcionamento em ambiente real — mas não sou autor do código linha a linha.
